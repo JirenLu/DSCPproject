@@ -1,0 +1,22 @@
+log = logs/train_$(Process).log
+output = logs/train_$(Process).out
+error = logs/train_$(Process).err
+
+executable = train.sh
+
+container_image = file:///staging/jgillett/python_numpy_torch.sif
+
+arguments = $(Process)
+
+request_cpus = 1
+request_memory = 2GB
+request_disk = 2GB
+request_gpus = 1
+
+should_transfer_files = YES
+transfer_input_files = train.py, dataset/
+when_to_transfer_output = ON_EXIT
+
+transfer_output_files = checkpoints
+
+queue 5
