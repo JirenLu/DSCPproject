@@ -1,0 +1,21 @@
+log = logs/cnn_$(Cluster)_$(Process).log
+output = logs/cnn_$(Cluster)_$(Process).out
+error = logs/cnn_$(Cluster)_$(Process).err
+
+arguments = $(Process)
+container_image = osdf:///ospool/uc-shared/public/OSG-Staff/xalim_stat/python_numpy_torch.sif
+
+executable = cnn_train.sh
+should_transfer_files = YES
+transfer_input_files = cnn_train.py, dataset/split_$(Process)/
+when_to_transfer_output = ON_EXIT
+transfer_output_files = checkpoints
+
++WantGPULab = true
++GPUJobLength = "short"
+request_gpus = 1
+request_cpus = 1
+request_memory = 4GB
+request_disk = 4GB
+
+queue 5
