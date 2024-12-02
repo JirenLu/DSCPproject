@@ -1,8 +1,12 @@
 import numpy as np
 from torchvision import datasets, transforms
+from concurrent.futures import ThreadPoolExecutor
 
 
-def load_and_save_datasets(num):
+def load_and_save_dataset(num):
+    """
+    加载数据集，进行变换，保存为 .npz 格式
+    """
     # Define transformations
     transform = transforms.Compose([
         transforms.Resize((200, 200)),  # Resize to 200x200
@@ -26,8 +30,18 @@ def load_and_save_datasets(num):
 
     # Save to .npz
     np.savez_compressed(f"dataset/split_{num}/split_{num}", images=all_images, labels=all_labels)
-    print(f"Dataset saved")
+    print(f"Dataset split_{num} saved.")
 
 
-for i in range(5):
-    load_and_save_datasets(i)
+def process_datasets_concurrently(num_splits):
+    """
+    使用多线程处理多个分片数据集
+    """
+    with ThreadPoolExecutor() as executor:
+        executor.map(load_and_save_dataset, range(num_splits))
+
+
+# 执行并行处理
+if __name__ == "__main__":
+    NUM_SPLITS = 5
+    process_datasets_concurrently(NUM_SPLITS)

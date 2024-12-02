@@ -2,18 +2,18 @@ import os
 import shutil
 from math import ceil
 import random
+from concurrent.futures import ThreadPoolExecutor
 
-# 输入参数
-ORIGIN_DATASET = "origin_dataset"  # 原始数据集路径
-OUTPUT_DIR = "dataset"  # 输出路径
-NUM_SPLITS = 5  # 数据集分片数量
+
+def copy_files(files, src_dir, dst_dir):
+    """
+    并行复制文件
+    """
+    for img in files:
+        shutil.copy(os.path.join(src_dir, img), os.path.join(dst_dir, img))
 
 
 def split_dataset(origin_dataset, output_dir, num_splits):
-    """
-    将 origin_dataset 中的 real_images 和 fake_images 按输入数量均分到多个子数据集中
-    并符合 ImageFolder 的结构，同时打乱图片顺序。
-    """
     real_images_dir = os.path.join(origin_dataset, "real_images")
     fake_images_dir = os.path.join(origin_dataset, "fake_images")
 
@@ -34,32 +34,36 @@ def split_dataset(origin_dataset, output_dir, num_splits):
     # 计算每个分片的图片数量
     real_per_split = ceil(total_real / num_splits)
     fake_per_split = ceil(total_fake / num_splits)
-    # 创建输出目录
     os.makedirs(output_dir, exist_ok=True)
 
     # 开始分片
-    for i in range(num_splits):
-        split_dir = os.path.join(output_dir, f"split_{i}")
-        os.makedirs(os.path.join(split_dir, "real"), exist_ok=True)  # 创建类别子文件夹
-        os.makedirs(os.path.join(split_dir, "fake"), exist_ok=True)  # 创建类别子文件夹
+    with ThreadPoolExecutor() as executor:
+        for i in range(num_splits):
+            split_dir = os.path.join(output_dir, f"split_{i}")
+            os.makedirs(os.path.join(split_dir, "real"), exist_ok=True)
+            os.makedirs(os.path.join(split_dir, "fake"), exist_ok=True)
 
-        # 分配 real_images
-        real_start_idx = i * real_per_split
-        real_end_idx = min(real_start_idx + real_per_split, total_real)
-        for img in real_images[real_start_idx:real_end_idx]:
-            shutil.copy(os.path.join(real_images_dir, img), os.path.join(split_dir, "real", img))
+            real_start_idx = i * real_per_split
+            real_end_idx = min(real_start_idx + real_per_split, total_real)
+            fake_start_idx = i * fake_per_split
+            fake_end_idx = min(fake_start_idx + fake_per_split, total_fake)
 
-        # 分配 fake_images
-        fake_start_idx = i * fake_per_split
-        fake_end_idx = min(fake_start_idx + fake_per_split, total_fake)
-        for img in fake_images[fake_start_idx:fake_end_idx]:
-            shutil.copy(os.path.join(fake_images_dir, img), os.path.join(split_dir, "fake", img))
+            # 并行复制 real_images 和 fake_images
+            executor.submit(
+                copy_files, real_images[real_start_idx:real_end_idx], real_images_dir, os.path.join(split_dir, "real")
+            )
+            executor.submit(
+                copy_files, fake_images[fake_start_idx:fake_end_idx], fake_images_dir, os.path.join(split_dir, "fake")
+            )
 
-        print(
-            f"Split {i} created: {real_end_idx - real_start_idx} real images, {fake_end_idx - fake_start_idx} fake images")
+            print(f"Split {i} created: {real_end_idx - real_start_idx} real images, {fake_end_idx - fake_start_idx}")
 
     print(f"Dataset successfully split into {num_splits} parts.")
 
 
+# 输入参数
+ORIGIN_DATASET = "origin_dataset"  # 原始数据集路径
+OUTPUT_DIR = "dataset"  # 输出路径
+NUM_SPLITS = 5  # 数据集分片数量
 # 执行分割
 split_dataset(ORIGIN_DATASET, OUTPUT_DIR, NUM_SPLITS)
